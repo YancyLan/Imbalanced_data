@@ -1,0 +1,11 @@
+class,real_count,synth_predicted_count,synth/real_ratio
+Analysis,60,0,0.0
+Backdoor,52,0,0.0
+DoS,368,0,0.0
+Exploits,1002,997,0.995
+Fuzzers,546,78,0.143
+Generic,1200,521,0.434
+Normal,1680,3665,2.182
+Reconnaissance,315,0,0.0
+Shellcode,34,0,0.0
+Worms,4,0,0.0
