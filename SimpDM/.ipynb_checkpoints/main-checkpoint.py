@@ -4,6 +4,7 @@ import zero
 from model import SimpDM
 from load_data import make_dataset, prepare_fast_dataloader
 from model.modules import MLPDiffusion
+import json
 
 import pandas as pd
 import argparse
@@ -81,12 +82,15 @@ def summarize_results(results, args):
         final_result[key] = '{:.4f}+-{:.4f}'.format(rmse_mean, rmse_std)
         all_result[key] = rmses
         print('{}: {}'.format(key, final_result[key]))
+    return final_result
 
 def main(args, device = torch.device('cuda:0'), seed = 0):
 
     ####################### LOAD DATA #######################
     zero.improve_reproducibility(seed)
-    D = make_dataset(args)
+    D, data_mean, data_std = make_dataset(args) ## ADDED: save mean and std from ORIGINAL RAW DATASET
+    # print(data_mean)
+    # print(data_std)
     num_numerical_features = D.X_num['x_miss'].shape[1]
     d_in = num_numerical_features
     d_out = num_numerical_features
@@ -103,7 +107,7 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
     diffusion.to(device)
     diffusion.train()
     trainer = Trainer(diffusion, train_loader, lr=args.lr, weight_decay=args.weight_decay, epochs=args.epochs,
-                      device=device, data=D)
+                      device=device, data=D) #ADDED: training function
     trainer.run_loop()
 
     ####################### IMPUTE #######################
@@ -114,18 +118,17 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
     mask = torch.from_numpy(D.X_num['miss_mask']).float()
 
     x_imputed = diffusion.impute(X.to(device), mask.to(device))
-
+    x_imputed_unreg = x_imputed * data_std + data_mean
     ####################### EVALUATE #######################
     result = {}
 
     x_test_gt = D.X_num['x_gt']
     mask = D.X_num['miss_mask']
-
-    rmse = RMSE(x_imputed, x_test_gt, mask)
+    
+    rmse = RMSE(x_imputed, x_test_gt, mask) 
     result['rmse'] = rmse
     print(rmse)
-
-    return result
+    return result, x_imputed_unreg 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -165,6 +168,12 @@ if __name__ == "__main__":
 
     results = []
     for trial in range(args.n_trial):
-        result = main(seed=trial, device=device, args=args)
+        result, x_imputed = main(seed=trial, device=device, args=args)
         results.append(result)
-    summarize_results(results, args)
+        #ADDED: save imputed data
+        np.savetxt(f'SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv', 
+                   x_imputed, delimiter=',')
+    final_results = summarize_results(results, args)
+    with open(f"SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_rmse_dict.json", 'w') as f:
+        json.dump(final_results, f)
+    

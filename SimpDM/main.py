@@ -88,7 +88,9 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
 
     ####################### LOAD DATA #######################
     zero.improve_reproducibility(seed)
-    D = make_dataset(args)
+    D, data_mean, data_std = make_dataset(args) ## ADDED: save mean and std from ORIGINAL RAW DATASET
+    # print(data_mean)
+    # print(data_std)
     num_numerical_features = D.X_num['x_miss'].shape[1]
     d_in = num_numerical_features
     d_out = num_numerical_features
@@ -116,17 +118,17 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
     mask = torch.from_numpy(D.X_num['miss_mask']).float()
 
     x_imputed = diffusion.impute(X.to(device), mask.to(device))
-
+    x_imputed_unreg = x_imputed * data_std + data_mean
     ####################### EVALUATE #######################
     result = {}
 
     x_test_gt = D.X_num['x_gt']
     mask = D.X_num['miss_mask']
-
-    rmse = RMSE(x_imputed, x_test_gt, mask)
+    
+    rmse = RMSE(x_imputed, x_test_gt, mask) 
     result['rmse'] = rmse
     print(rmse)
-    return result, x_imputed
+    return result, x_imputed_unreg 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
