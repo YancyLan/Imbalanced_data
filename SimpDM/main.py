@@ -4,6 +4,7 @@ import zero
 from model import SimpDM
 from load_data import make_dataset, prepare_fast_dataloader
 from model.modules import MLPDiffusion
+import json
 
 import pandas as pd
 import argparse
@@ -81,6 +82,7 @@ def summarize_results(results, args):
         final_result[key] = '{:.4f}+-{:.4f}'.format(rmse_mean, rmse_std)
         all_result[key] = rmses
         print('{}: {}'.format(key, final_result[key]))
+    return final_result
 
 def main(args, device = torch.device('cuda:0'), seed = 0):
 
@@ -103,7 +105,7 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
     diffusion.to(device)
     diffusion.train()
     trainer = Trainer(diffusion, train_loader, lr=args.lr, weight_decay=args.weight_decay, epochs=args.epochs,
-                      device=device, data=D)
+                      device=device, data=D) #ADDED: training function
     trainer.run_loop()
 
     ####################### IMPUTE #######################
@@ -124,8 +126,7 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
     rmse = RMSE(x_imputed, x_test_gt, mask)
     result['rmse'] = rmse
     print(rmse)
-
-    return result
+    return result, x_imputed
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -165,6 +166,12 @@ if __name__ == "__main__":
 
     results = []
     for trial in range(args.n_trial):
-        result = main(seed=trial, device=device, args=args)
+        result, x_imputed = main(seed=trial, device=device, args=args)
         results.append(result)
-    summarize_results(results, args)
+        #ADDED: save imputed data
+        np.savetxt(f'SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv', 
+                   x_imputed, delimiter=',')
+    final_results = summarize_results(results, args)
+    with open(f"SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_rmse_dict.json", 'w') as f:
+        json.dump(final_results, f)
+    
