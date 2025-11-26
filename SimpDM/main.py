@@ -88,13 +88,18 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
 
     ####################### LOAD DATA #######################
     zero.improve_reproducibility(seed)
+
+    # preset dataset
     D, data_mean, data_std = make_dataset(args) ## ADDED: save mean and std from ORIGINAL RAW DATASET
     # print(data_mean)
     # print(data_std)
     num_numerical_features = D.X_num['x_miss'].shape[1]
     d_in = num_numerical_features
     d_out = num_numerical_features
-
+    
+    # custom dataset
+    # TODO
+    
     model = MLPDiffusion(d_in=d_in, d_out=d_out, d_layers=[args.hidden_units] * args.num_layers)
     model.to(device)
 
@@ -156,7 +161,10 @@ if __name__ == "__main__":
     parser.add_argument("--num_timesteps", type=int, default=10)
     parser.add_argument("--ssl_loss_weight", type=float, default=1)
     parser.add_argument("--gammas", type=str, default="1_0.8_0.001")
-
+    
+    ## ADDED: add own dataset
+    parser.add_argument("--dataset_path", type=str, default="")
+    
     args = parser.parse_args()
     device = torch.device(args.device)
 
