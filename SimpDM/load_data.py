@@ -64,6 +64,11 @@ def get_raw_data(dset_name):
         df_np = np.loadtxt('./raw_data/{}/data/data.txt'.format(dset_name))
         X = pd.DataFrame(df_np[:, :-1])
         Y = pd.DataFrame(df_np[:, -1:])
+    
+    elif dset_name == 'unbalance_data':
+        df = pd.read_csv('./raw_data/unbalance/unbalanced_data_standardized.csv')
+        X = pd.DataFrame(df.values[:, :-1].astype('float'))
+        Y = pd.DataFrame(df.values[:, -1])
 
     else:
         assert "error dataset name"
