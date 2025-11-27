@@ -65,7 +65,7 @@ def get_raw_data(dset_name):
         X = pd.DataFrame(df_np[:, :-1])
         Y = pd.DataFrame(df_np[:, -1:])
     
-    elif dset_name == 'unbalance_data':
+    elif dset_name == 'unbalanced':
         df = pd.read_csv('./raw_data/unbalance/unbalanced_data_standardized.csv')
         X = pd.DataFrame(df.values[:, :-1].astype('float'))
         Y = pd.DataFrame(df.values[:, -1])

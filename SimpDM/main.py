@@ -145,7 +145,8 @@ if __name__ == "__main__":
     # data param
     parser.add_argument("--dataset", type=str, default="iris",
                         choices=["iris", "yacht", "housing", "diabetes", "blood", "energy", "german", "concrete", "yeast",
-                                "airfoil", "wine_red", "abalone", "wine_white", "phoneme", "power", "ecommerce", "california"])
+                                "airfoil", "wine_red", "abalone", "wine_white", "phoneme", "power", "ecommerce",
+                                 "california", "unbalanced"])
     parser.add_argument("--scenario", type=str, default="MCAR")
     parser.add_argument("--missing_ratio", type=float, default=0.3)
 
