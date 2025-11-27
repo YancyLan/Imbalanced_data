@@ -92,12 +92,14 @@ def make_dataset(args):
 
     D = Dataset(X_num, None)
 
-    # zero centered
-    dataset_mean_np = np.nanmean(D.X_num['x_miss'], 0, keepdims=True)
-    D.X_num['x_miss'] = D.X_num['x_miss'] - dataset_mean_np
-    D.X_num['x_gt'] = D.X_num['x_gt'] - dataset_mean_np
+    # zero centered ADDED: STANDARDIZE
+    dataset_mean_np = np.mean(X_raw.values, axis=0, keepdims=True)
+    data_std = np.std(X_raw.values, axis=0, keepdims=True)
+    # test removing standardization
+    # D.X_num['x_miss'] = (D.X_num['x_miss'] - dataset_mean_np) / data_std
+    # D.X_num['x_gt'] = (D.X_num['x_gt'] - dataset_mean_np) / data_std
 
-    return D
+    return D, dataset_mean_np, data_std
 
 def fetch_wine_quality_white():
     with open('./raw_data/wine_quality_white/winequality-white.csv', 'rb') as f:
