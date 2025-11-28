@@ -31,3 +31,4 @@ for idx in range(nimp):
 Xy_fake = forest_model.impute(repaint=True, r=10, j=5, k=nimp) # REPAINT (slow, but better)
 for idx in range(nimp):
     np.savetxt(f"ForestDiff_slow_imputed_iris_trial{idx}.csv", Xy_fake[idx,:, :], delimiter=',')
+
