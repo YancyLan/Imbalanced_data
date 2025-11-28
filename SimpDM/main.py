@@ -11,6 +11,8 @@ import argparse
 from hyperimpute.plugins.utils.metrics import RMSE
 from hyperimpute.utils.metrics import generate_score
 
+from ForestDiffusion import ForestDiffusionModel
+
 class Trainer:
     def __init__(self, diffusion, train_iter, lr, weight_decay, epochs, device=torch.device('cuda:0'), data=None):
         self.diffusion = diffusion
@@ -84,21 +86,33 @@ def summarize_results(results, args):
         print('{}: {}'.format(key, final_result[key]))
     return final_result
 
+def stratified_sample(X, y, n_per_class):
+    classes = np.unique(y)
+    idxs = []
+
+    for c in classes:
+        c_idx = np.where(y == c)[0]
+        if len(c_idx) < n_per_class:
+            raise ValueError(f"Class {c} has only {len(c_idx)} samples.")
+        chosen = np.random.choice(c_idx, size=n_per_class, replace=False)
+        idxs.append(chosen)
+
+    idxs = np.concatenate(idxs)
+    return idxs
+
 def main(args, device = torch.device('cuda:0'), seed = 0):
 
     ####################### LOAD DATA #######################
     zero.improve_reproducibility(seed)
 
     # preset dataset
-    D, data_mean, data_std = make_dataset(args) ## ADDED: save mean and std from ORIGINAL RAW DATASET
+    D, y, data_mean, data_std = make_dataset(args) ## ADDED: save mean and std from ORIGINAL RAW DATASET
+    
     # print(data_mean)
     # print(data_std)
     num_numerical_features = D.X_num['x_miss'].shape[1]
     d_in = num_numerical_features
     d_out = num_numerical_features
-    
-    # custom dataset
-    # TODO
     
     model = MLPDiffusion(d_in=d_in, d_out=d_out, d_layers=[args.hidden_units] * args.num_layers)
     model.to(device)
@@ -118,22 +132,61 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
     ####################### IMPUTE #######################
     diffusion.eval()
 
-    X = torch.from_numpy(D.X_num['x_miss']).float()
+    # sample per class
+    # idx = stratified_sample(D.X_num['x_miss'], y, n_per_class=20)
+
+    # sample randomly
+    idx = np.random.choice(range(D.X_num['x_miss'].shape[0]), size=args.subsample_size, replace=False)
+    # sampled versions
+    X = torch.from_numpy(D.X_num['x_miss'])[idx]
     X = torch.nan_to_num(X, nan=-1)
-    mask = torch.from_numpy(D.X_num['miss_mask']).float()
+    mask = torch.from_numpy(D.X_num['miss_mask']).float()[idx]
+    
+    # original version (full dataset)
+    # X = torch.from_numpy(D.X_num['x_miss']).float()
+    # X = torch.nan_to_num(X, nan=-1)
+    # mask = torch.from_numpy(D.X_num['miss_mask']).float()
 
     x_imputed = diffusion.impute(X.to(device), mask.to(device))
     x_imputed_unreg = x_imputed * data_std + data_mean
     ####################### EVALUATE #######################
     result = {}
+    # original version (Full)
+    # x_test_gt = D.X_num['x_gt']
+    # mask = D.X_num['miss_mask']
 
-    x_test_gt = D.X_num['x_gt']
-    mask = D.X_num['miss_mask']
-    
+    # sampled version
+    x_test_gt = D.X_num['x_gt'][idx]
+    mask = D.X_num['miss_mask'][idx]
+
     rmse = RMSE(x_imputed, x_test_gt, mask) 
     result['rmse'] = rmse
-    print(rmse)
-    return result, x_imputed_unreg 
+    print("SimpDM finished. RMSE:", rmse)
+    # print(x_imputed.shape)
+    
+    # forestdiffusion impute
+    # convert X to numpy
+    X_np = X.cpu().numpy()
+    y_sample = pd.DataFrame(y.iloc[idx])
+    y_sample_fact, y_cats = pd.factorize(y_sample.squeeze())
+ 
+    Xy = np.concatenate([X_np, y_sample_fact[:, None]], axis=1)
+    # print(Xy.shape)
+    nimp = 1 # number of imputations needed, aka number of trials in simpdm
+    forest_model = ForestDiffusionModel(Xy, n_t=10, duplicate_K=1, bin_indexes=[], cat_indexes=[Xy.shape[1] - 1],
+                                        int_indexes=[], diffusion_type='vp', n_jobs=1, max_depth=3, n_estimators=20)
+    Xy_fake = forest_model.impute(k=nimp) # regular (fast)
+    # print(Xy_fake.shape)
+    fd_rmse = RMSE(Xy_fake[:, :-1], x_test_gt, mask) 
+    result['fd_rmse'] = fd_rmse
+    print("Forest diffusion finished. RMSE:", fd_rmse)
+
+    Xy_fake_slow = forest_model.impute(repaint=True, r=10, j=5, k=nimp) # REPAINT (slow, but better)
+    fd_rmse_slow = RMSE(Xy_fake_slow[:, :-1], x_test_gt, mask) 
+    result['fd_rmse_repaint'] = fd_rmse_slow
+    print("Forest diffusion (repaint) finished. RMSE:", fd_rmse_slow)
+
+    return result, x_imputed, x_imputed_unreg, Xy_fake, Xy_fake_slow
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -145,7 +198,8 @@ if __name__ == "__main__":
     # data param
     parser.add_argument("--dataset", type=str, default="iris",
                         choices=["iris", "yacht", "housing", "diabetes", "blood", "energy", "german", "concrete", "yeast",
-                                "airfoil", "wine_red", "abalone", "wine_white", "phoneme", "power", "ecommerce", "california"])
+                                "airfoil", "wine_red", "abalone", "wine_white", "phoneme", "power", "ecommerce",
+                                 "california", "unbalanced"])
     parser.add_argument("--scenario", type=str, default="MCAR")
     parser.add_argument("--missing_ratio", type=float, default=0.3)
 
@@ -162,8 +216,9 @@ if __name__ == "__main__":
     parser.add_argument("--ssl_loss_weight", type=float, default=1)
     parser.add_argument("--gammas", type=str, default="1_0.8_0.001")
     
-    ## ADDED: add own dataset
+    ## ADDED: add own dataset, add subsample size (forest diffusion cant run on huge dataset)
     parser.add_argument("--dataset_path", type=str, default="")
+    parser.add_argument("--subsample_size", type=int, default=150)
     
     args = parser.parse_args()
     device = torch.device(args.device)
@@ -175,13 +230,23 @@ if __name__ == "__main__":
     timer.run()
 
     results = []
+    # simpdm train and impute
     for trial in range(args.n_trial):
-        result, x_imputed = main(seed=trial, device=device, args=args)
+        result, x_imputed, x_imputed_unreg, Xy_fake, Xy_fake_slow = main(seed=trial, device=device, args=args)
         results.append(result)
         #ADDED: save imputed data
         np.savetxt(f'SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv', 
                    x_imputed, delimiter=',')
+        np.savetxt(f'SimpDM_imputed_unreg_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv', 
+                   x_imputed_unreg, delimiter=',')
+        np.savetxt(f"ForestDiff_fast_imputed_misprop_{args.missing_ratio}_imbalanced_trial{idx}.csv",
+                   Xy_fake[idx,:, :], delimiter=',')
+        np.savetxt(f"ForestDiff_slow_imputed_misprop_{args.missing_ratio}_imbalanced_trial{idx}.csv",
+                   Xy_fake_slow[idx,:, :], delimiter=',')
     final_results = summarize_results(results, args)
+    
     with open(f"SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_rmse_dict.json", 'w') as f:
         json.dump(final_results, f)
-    
+        
+
+

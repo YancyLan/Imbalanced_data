@@ -65,9 +65,9 @@ def get_raw_data(dset_name):
         X = pd.DataFrame(df_np[:, :-1])
         Y = pd.DataFrame(df_np[:, -1:])
     
-    elif dset_name == 'unbalance_data':
+    elif dset_name == 'unbalanced':
         df = pd.read_csv('./raw_data/unbalance/unbalanced_data_standardized.csv')
-        X = pd.DataFrame(df.values[:, :-1].astype('float'))
+        X = pd.DataFrame(df.values[:, :-2].astype('float'))
         Y = pd.DataFrame(df.values[:, -1])
 
     else:
@@ -80,7 +80,7 @@ def make_dataset(args):
     missing_ratio = args.missing_ratio
     scenario = args.scenario
 
-    X_raw, _ = get_raw_data(name)
+    X_raw, y = get_raw_data(name)
     imputation_scenarios = simulate_scenarios(X_raw, sample_columns=True)
     x_gt, x_miss, miss_mask = imputation_scenarios[scenario][missing_ratio]
     x_gt, x_miss, miss_mask = x_gt.to_numpy(), x_miss.to_numpy(), miss_mask.to_numpy()
@@ -99,7 +99,7 @@ def make_dataset(args):
     # D.X_num['x_miss'] = (D.X_num['x_miss'] - dataset_mean_np) / data_std
     # D.X_num['x_gt'] = (D.X_num['x_gt'] - dataset_mean_np) / data_std
 
-    return D, dataset_mean_np, data_std
+    return D, y, dataset_mean_np, data_std
 
 def fetch_wine_quality_white():
     with open('./raw_data/wine_quality_white/winequality-white.csv', 'rb') as f:
