@@ -81,7 +81,7 @@ def make_dataset(args):
     scenario = args.scenario
 
     X_raw, y = get_raw_data(name)
-    imputation_scenarios = simulate_scenarios(X_raw, sample_columns=True)
+    imputation_scenarios = simulate_scenarios(X_raw, sample_columns=False) ## WAS TRUE BY DEFAULT, MEANING NOT ALL COLS GOT THIS TRT
     x_gt, x_miss, miss_mask = imputation_scenarios[scenario][missing_ratio]
     x_gt, x_miss, miss_mask = x_gt.to_numpy(), x_miss.to_numpy(), miss_mask.to_numpy()
 
@@ -92,13 +92,23 @@ def make_dataset(args):
 
     D = Dataset(X_num, None)
 
-    # zero centered ADDED: STANDARDIZE
+    # saving mean and std for later
     dataset_mean_np = np.mean(X_raw.values, axis=0, keepdims=True)
     data_std = np.std(X_raw.values, axis=0, keepdims=True)
     # test removing standardization
     # D.X_num['x_miss'] = (D.X_num['x_miss'] - dataset_mean_np) / data_std
     # D.X_num['x_gt'] = (D.X_num['x_gt'] - dataset_mean_np) / data_std
 
+    # sanity check: do all columns get missing values?
+    x_miss_df = pd.DataFrame(x_miss)
+    missing_fraction = x_miss_df.isna().mean()
+    print("Fraction of missing values per column:")
+    print(missing_fraction)
+    
+    # Optional: overall missingness
+    overall_missing = np.isnan(x_miss).mean()
+    print(f"\nOverall fraction of missing values: {overall_missing:.3f}")
+    
     return D, y, dataset_mean_np, data_std
 
 def fetch_wine_quality_white():
