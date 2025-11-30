@@ -65,47 +65,32 @@ def get_raw_data(data_path: str = "data/unbalance_data.csv"):
     return X, Y
 
 
-def make_dataset(args=None, missing_ratio=0.3, scenario='MAR'):
-    """
-    Create dataset with simulated missing values following SimpDM pipeline.
-    
-    Args:
-        args: Optional arguments object with dataset, missing_ratio, scenario attributes
-        missing_ratio: Proportion of values to make missing (default 0.3)
-        scenario: Missing data mechanism - 'MAR', 'MCAR', or 'MNAR' (default 'MAR')
-        
-    Returns:
-        D: Dataset object with x_miss, x_gt, miss_mask, and labels
-    """
-    if args is not None:
-        missing_ratio = args.missing_ratio
-        scenario = args.scenario
-    
-    X_raw, Y_raw = get_raw_data()
-    
-    # Simulate missing data scenarios using hyperimpute
-    imputation_scenarios = simulate_scenarios(X_raw, sample_columns=True)
+def make_dataset(args):
+    name = args.dataset
+    missing_ratio = args.missing_ratio
+    scenario = args.scenario
+
+    X_raw, y = get_raw_data(name)
+    imputation_scenarios = simulate_scenarios(X_raw, sample_columns=False) 
+    ## WAS TRUE BY DEFAULT, MEANING NOT ALL COLS GOT THIS TRT
     x_gt, x_miss, miss_mask = imputation_scenarios[scenario][missing_ratio]
     x_gt, x_miss, miss_mask = x_gt.to_numpy(), x_miss.to_numpy(), miss_mask.to_numpy()
-    
+
     X_num = {}
     X_num['x_miss'] = x_miss
     X_num['x_gt'] = x_gt
     X_num['miss_mask'] = miss_mask
-    X_num['labels'] = Y_raw.values  # Store attack category labels
-    
-    D = Dataset(X_num, None)
-    
-    # Zero-centered normalization (compute mean only from observed values)
-    dataset_mean_np = np.nanmean(D.X_num['x_miss'], 0, keepdims=True)
-    D.X_num['x_miss'] = D.X_num['x_miss'] - dataset_mean_np
-    D.X_num['x_gt'] = D.X_num['x_gt'] - dataset_mean_np
-    
-    # Store mean for later use (e.g., inverse transform)
-    D.X_num['mean'] = dataset_mean_np
-    
-    return D
 
+    D = Dataset(X_num, None)
+
+    # zero centered ADDED: STANDARDIZE
+    dataset_mean_np = np.mean(X_raw.values, axis=0, keepdims=True)
+    data_std = np.std(X_raw.values, axis=0, keepdims=True)
+    # test removing standardization
+    # D.X_num['x_miss'] = (D.X_num['x_miss'] - dataset_mean_np) / data_std
+    # D.X_num['x_gt'] = (D.X_num['x_gt'] - dataset_mean_np) / data_std
+
+    return D, y, dataset_mean_np, data_std
 
 def get_category_sizes(X: Union[torch.Tensor, np.ndarray]) -> List[int]:
     """Get the number of unique categories for each categorical feature."""

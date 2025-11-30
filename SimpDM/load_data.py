@@ -81,7 +81,14 @@ def make_dataset(args):
     scenario = args.scenario
 
     X_raw, y = get_raw_data(name)
-    imputation_scenarios = simulate_scenarios(X_raw, sample_columns=False) ## WAS TRUE BY DEFAULT, MEANING NOT ALL COLS GOT THIS TRT
+    print(X_raw.columns)
+    imputation_scenarios = simulate_scenarios(X_raw, 
+                                              column_limit=len(X_raw.columns), 
+                                              sample_columns=False) 
+    ##CHANGED!!! sample_columns WAS TRUE BY DEFAULT, MEANING NOT ALL COLS GOT THIS TRT
+    ##ALSO, column_limit is 8 BY DEFAULT, meaning ONLY EIGHT COLS GET IT ANYWAY!!
+    # you must change this to what i have for it to work properly. (missing randomly across ALL COLS)
+    # i can't believe the authors didn't check this, maybe they just never ran stuff on data w more than 8 cols?
     x_gt, x_miss, miss_mask = imputation_scenarios[scenario][missing_ratio]
     x_gt, x_miss, miss_mask = x_gt.to_numpy(), x_miss.to_numpy(), miss_mask.to_numpy()
 
@@ -100,14 +107,14 @@ def make_dataset(args):
     # D.X_num['x_gt'] = (D.X_num['x_gt'] - dataset_mean_np) / data_std
 
     # sanity check: do all columns get missing values?
-    x_miss_df = pd.DataFrame(x_miss)
-    missing_fraction = x_miss_df.isna().mean()
-    print("Fraction of missing values per column:")
-    print(missing_fraction)
+    # x_miss_df = pd.DataFrame(x_miss)
+    # missing_fraction = x_miss_df.isna().mean()
+    # print("Fraction of missing values per column:")
+    # print(missing_fraction)
     
     # Optional: overall missingness
-    overall_missing = np.isnan(x_miss).mean()
-    print(f"\nOverall fraction of missing values: {overall_missing:.3f}")
+    # overall_missing = np.isnan(x_miss).mean()
+    # print(f"\nOverall fraction of missing values: {overall_missing:.3f}")
     
     return D, y, dataset_mean_np, data_std
 

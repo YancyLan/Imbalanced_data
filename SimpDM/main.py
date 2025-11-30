@@ -139,7 +139,6 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
     model = MLPDiffusion(d_in=d_in, d_out=d_out, d_layers=[args.hidden_units] * args.num_layers)
     model.to(device)
 
-
     ####################### TRAIN #######################
     train_loader = prepare_fast_dataloader(D, split='train', batch_size=args.batch_size)
 
@@ -161,13 +160,12 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
     
     x_imputed = diffusion.impute(X_simpdm.to(device), mask.to(device))
     x_imputed_unreg = x_imputed * data_std + data_mean
-    x_test_gt_unreg = x_test_gt * data_std + data_mean
     ####################### EVALUATE #######################
     result = {}
     
-    x_test_gt = D.X_num['x_gt']  # raw numpy
+    x_test_gt = D.X_num['x_gt'] 
     mask_np   = D.X_num['miss_mask']
-    
+    x_test_gt_unreg = x_test_gt * data_std + data_mean
     rmse = RMSE(x_imputed, x_test_gt, mask_np)
     rmse2 = RMSE(x_imputed_unreg, x_test_gt_unreg, mask_np)
     result['rmse'] = rmse
