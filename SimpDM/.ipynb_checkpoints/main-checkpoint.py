@@ -262,13 +262,13 @@ if __name__ == "__main__":
             main(seed=trial, device=device, args=args)
         results.append(result)
         #ADDED: save imputed data
-        np.savetxt(f'SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv', 
+        np.savetxt(f'FINAL_SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv', 
                    x_imputed, delimiter=',')
-        np.savetxt(f'SimpDM_imputed_unreg_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv', 
+        np.savetxt(f'FINAL_SimpDM_imputed_unreg_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv', 
                    x_imputed_unreg, delimiter=',')
-        np.savetxt(f"test_gt_{args.dataset}_misprop_{args.missing_ratio}_imbalanced_trial{trial}.csv",
+        np.savetxt(f"FINAL_test_gt_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv",
                    x_test_gt, delimiter=',')
-        np.savetxt(f"mask_{args.dataset}_misprop_{args.missing_ratio}_imbalanced_trial{trial}.csv",
+        np.savetxt(f"FINAL_mask_{args.dataset}_misprop_{args.missing_ratio}_trial{trial}.csv",
                    mask_np, delimiter=',')
         if args.fdiff:
             np.savetxt(f"original_data_misprop_{args.missing_ratio}_imbalanced_trial{trial}.csv",
@@ -280,7 +280,7 @@ if __name__ == "__main__":
 
     final_results = summarize_results(results, args)
     
-    with open(f"SimpDM_imputed_full_{args.dataset}_misprop_{args.missing_ratio}_rmse_dict.json", 'w') as f:
+    with open(f"FINAL_SimpDM_imputed_{args.dataset}_misprop_{args.missing_ratio}_rmse_dict.json", 'w') as f:
         json.dump(final_results, f)
         
 

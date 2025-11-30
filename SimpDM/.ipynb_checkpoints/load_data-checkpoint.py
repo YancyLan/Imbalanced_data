@@ -66,7 +66,7 @@ def get_raw_data(dset_name):
         Y = pd.DataFrame(df_np[:, -1:])
     
     elif dset_name == 'unbalanced':
-        df = pd.read_csv('./raw_data/unbalance/unbalanced_data_standardized.csv')
+        df = pd.read_csv('/work/ts518/sta571/Imbalanced_data/data/unbalanced_data_standardized.csv')
         X = pd.DataFrame(df.values[:, :-2].astype('float'))
         Y = pd.DataFrame(df.values[:, -1])
 
@@ -81,7 +81,7 @@ def make_dataset(args):
     scenario = args.scenario
 
     X_raw, y = get_raw_data(name)
-    print(X_raw.columns)
+    # print(X_raw.columns)
     imputation_scenarios = simulate_scenarios(X_raw, 
                                               column_limit=len(X_raw.columns), 
                                               sample_columns=False) 
@@ -112,9 +112,9 @@ def make_dataset(args):
     # print("Fraction of missing values per column:")
     # print(missing_fraction)
     
-    # Optional: overall missingness
-    # overall_missing = np.isnan(x_miss).mean()
-    # print(f"\nOverall fraction of missing values: {overall_missing:.3f}")
+    # sanity check: overall missingness
+    overall_missing = np.isnan(x_miss).mean()
+    print(f"\nOverall fraction of missing values: {overall_missing:.3f}")
     
     return D, y, dataset_mean_np, data_std
 
