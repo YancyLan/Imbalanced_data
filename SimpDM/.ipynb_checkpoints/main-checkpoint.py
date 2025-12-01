@@ -114,7 +114,8 @@ def main(args, device = torch.device('cuda:0'), seed = 0):
         # idx = stratified_sample(D.X_num['x_miss'], y, n_per_class=20)
         
         # sample randomly
-        idx = np.random.choice(range(D_full.X_num['x_miss'].shape[0]), size=args.subsample_size, replace=False)
+        idx = np.random.choice(range(D_full.X_num['x_miss'].shape[0]), 
+                               size=args.subsample_size, replace=False)
         x_miss_sub = D_full.X_num['x_miss'][idx]
         x_gt_sub   = D_full.X_num['x_gt'][idx]
         mask_sub   = D_full.X_num['miss_mask'][idx]
