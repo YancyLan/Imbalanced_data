@@ -67,8 +67,8 @@ def get_raw_data(dset_name):
     
     elif dset_name == 'unbalanced':
         df = pd.read_csv('/work/ts518/sta571/Imbalanced_data/data/unbalanced_data_standardized.csv')
-        X = pd.DataFrame(df.values[:, :-2].astype('float'))
-        Y = pd.DataFrame(df.values[:, -1])
+        X = pd.DataFrame(df.values[:, :-3].astype('float'))
+        Y = pd.DataFrame(df.values[:, -2])
 
     else:
         assert "error dataset name"
